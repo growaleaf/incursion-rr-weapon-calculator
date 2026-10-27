@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incursion Red River — Weapon Stat Comparison</title>
+<meta name="description" content="Compare Incursion Red River weapon stats side by side: rate of fire, effective range, muzzle velocity, and time to empty a magazine. Every number labeled by source.">
+<style>
+  :root {
+    --bg: #12140f; --panel: #1b1f16; --line: #33382a; --text: #e4e6d8;
+    --muted: #93987f; --accent: #8aa05a; --warn: #c9934a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  header { padding: 24px 20px 12px; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 6px; }
+  .sub { color: var(--muted); font-size: 0.92rem; max-width: 760px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 0 20px 48px; }
+  .picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 24px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    padding: 7px 12px; border-radius: 999px; cursor: pointer; font-size: 0.88rem;
+    user-select: none;
+  }
+  .chip[aria-pressed="true"] { border-color: var(--accent); background: #26301c; }
+  .chip .cat { color: var(--muted); font-size: 0.78rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #1f2317; color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  td.stat-cell { position: relative; }
+  .unconfirmed { color: var(--warn); font-size: 0.74rem; display: block; margin-top: 2px; }
+  .missing { color: var(--muted); }
+  .note { color: var(--muted); font-size: 0.78rem; display: block; margin-top: 2px; }
+  .rwref { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); color: var(--muted); font-size: 0.78rem; }
+  #empty-state { color: var(--muted); padding: 20px 0; }
+  section.sourcing { margin-top: 36px; border-top: 1px solid var(--line); padding-top: 18px; font-size: 0.86rem; color: var(--muted); }
+  section.sourcing h2 { color: var(--text); font-size: 1.05rem; }
+  section.sourcing a { color: var(--accent); }
+  .badge { display: inline-block; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 0.72rem; color: var(--muted); margin-left: 6px; }
+  #self-test { margin-top: 18px; font-size: 0.8rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Incursion Red River — Weapon Stat Comparison</h1>
+  <p class="sub">
+    Pick two or more weapons to compare their stats side by side, plus a computed time-to-empty-magazine.
+    Every number below is labeled by where it came from — most are single-sourced from one fan wiki, since
+    no second source for these exact tuned values exists. No damage, recoil, or ranking verdict is shown,
+    because no source has those numbers.
+  </p>
+</header>
+<main>
+  <div class="picker" id="picker" role="group" aria-label="Weapon picker"></div>
+  <div id="empty-state">Pick two or more weapons above to compare them.</div>
+  <div id="table-wrap"></div>
+
+  <section class="sourcing">
+    <h2>Sourcing and changelog note</h2>
+    <p>
+      All weapon stats come from the fan-maintained wiki
+      <a href="https://wikiwiki.jp/incursionrr/" target="_blank" rel="noopener">wikiwiki.jp/incursionrr</a>,
+      in Japanese. Fields shown as "single-sourced, unconfirmed" have exactly one source: this wiki. No
+      English-language wiki or calculator for this game was found as of 2026-10-27 across repeated searches.
+    </p>
+    <p>
+      Two weapons' muzzle-velocity figures (AK-74M, Colt M4A1) are shown alongside a real-world reference
+      figure for the actual firearm the in-game weapon is modeled on. That reference describes a different
+      gun's published spec, not this game's tuned number — it is shown for context, not as a second source
+      confirming the in-game value, per this build's data-honesty rule.
+    </p>
+    <p>
+      The wiki's own category pages cite different in-game version numbers against each other: the DMR page
+      cites version 1.0.14.4, the sniper rifle page cites version 1.1.0.1. This may mean some category pages
+      were last updated on different patches. Stats here are shown as currently published per page, not
+      normalized to one patch version.
+    </p>
+    <p>
+      Two weapons (FN Five-Seven, FN P90) are listed by the source wiki with 9x19mm ammunition, though both
+      real-world firearms are chambered in 5.7x28mm. Shown as published, not corrected, per this build's rule
+      against silently merging real-world and in-game facts.
+    </p>
+    <p>
+      One rifle-category table row on the source wiki (7.62x51mm, 700rpm, 300m effective range) links to a
+      page that returns "no such page," so its name cannot be read from the wiki. It is excluded from this
+      tool rather than guessed.
+    </p>
+    <p>
+      No damage, recoil, or armor-penetration numbers exist anywhere on the source wiki for any weapon, so
+      no "effective DPS" or ranking is computed or shown here.
+    </p>
+  </section>
+
+  <div id="self-test"></div>
+</main>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  const picker = document.getElementById("picker");
+  const emptyState = document.getElementById("empty-state");
+  const tableWrap = document.getElementById("table-wrap");
+  const selected = new Set();
+
+  function fmtRange(v) { return v == null ? null : v + " m"; }
+  function fmtVelocity(w) {
+    if (w.muzzleVelocityMs == null) return null;
+    return w.muzzleVelocityMs + " m/s";
+  }
+  function fmtTimeToEmpty(w) {
+    const s = timeToEmptySeconds(w);
+    return s == null ? null : s.toFixed(2) + " s";
+  }
+
+  function statCell(value, opts) {
+    opts = opts || {};
+    if (value == null) {
+      let html = '<span class="missing">— not listed on source wiki</span>';
+      return html;
+    }
+    let html = escapeHtml(String(value));
+    if (opts.unconfirmed) {
+      html += '<span class="unconfirmed">single-sourced, unconfirmed</span>';
+    }
+    if (opts.note) {
+      html += '<span class="note">' + escapeHtml(opts.note) + "</span>";
+    }
+    return html;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function renderPicker() {
+    picker.innerHTML = "";
+    WEAPONS.forEach(function (w) {
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.type = "button";
+      chip.setAttribute("aria-pressed", selected.has(w.id) ? "true" : "false");
+      chip.innerHTML = escapeHtml(w.name) + ' <span class="cat">(' + escapeHtml(w.category) + ")</span>";
+      chip.addEventListener("click", function () {
+        if (selected.has(w.id)) selected.delete(w.id);
+        else selected.add(w.id);
+        render();
+      });
+      picker.appendChild(chip);
+    });
+  }
+
+  function renderTable() {
+    const chosen = WEAPONS.filter(function (w) { return selected.has(w.id); });
+    if (chosen.length < 2) {
+      emptyState.style.display = "block";
+      tableWrap.innerHTML = "";
+      return;
+    }
+    emptyState.style.display = "none";
+
+    const rows = [
+      { label: "Category", render: function (w) { return statCell(w.category); } },
+      { label: "Fire modes", render: function (w) { return statCell(w.fireModes.join(" / ")); } },
+      { label: "Ammo", render: function (w) {
+          let base = statCell(w.ammo);
+          if (w.ammoDivergenceNote) base += '<span class="note">' + escapeHtml(w.ammoDivergenceNote) + "</span>";
+          return base;
+        } },
+      { label: "Magazine", render: function (w) { return statCell(w.magDisplay, { unconfirmed: w.magDisplay != null }); } },
+      { label: "Rate of fire", render: function (w) {
+          let v = w.rpm == null ? null : w.rpm + " rpm";
+          return statCell(v, { unconfirmed: v != null, note: w.rpmNote });
+        } },
+      { label: "Effective range", render: function (w) { return statCell(fmtRange(w.effectiveRangeM), { unconfirmed: w.effectiveRangeM != null }); } },
+      { label: "Muzzle velocity", render: function (w) {
+          let cell = statCell(fmtVelocity(w), { unconfirmed: w.muzzleVelocityMs != null, note: w.muzzleVelocityNote });
+          if (w.realWorldReference) {
+            cell += '<div class="rwref">Real-world reference: ' + escapeHtml(w.realWorldReference.gun) +
+              " muzzle velocity " + escapeHtml(w.realWorldReference.velocityMs) + " m/s (" +
+              escapeHtml(w.realWorldReference.source) + "). Different fact, not a confirmation of the in-game value.</div>";
+          }
+          return cell;
+        } },
+      { label: "Time to empty magazine", render: function (w) { return statCell(fmtTimeToEmpty(w), { note: fmtTimeToEmpty(w) ? "computed: magazine ÷ rate of fire" : null }); } },
+      { label: "Source", render: function (w) {
+          const level = w.sourceLevel === "weapon-page" ? "weapon page" : "category table only";
+          return '<a href="' + w.sourceUrl + '" target="_blank" rel="noopener">wiki (' + level + ")</a>";
+        } },
+    ];
+
+    let html = "<table><thead><tr><th>Stat</th>";
+    chosen.forEach(function (w) { html += "<th>" + escapeHtml(w.name) + "</th>"; });
+    html += "</tr></thead><tbody>";
+    rows.forEach(function (row) {
+      html += "<tr><th>" + row.label + "</th>";
+      chosen.forEach(function (w) { html += '<td class="stat-cell">' + row.render(w) + "</td>"; });
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    tableWrap.innerHTML = html;
+  }
+
+  function render() {
+    renderPicker();
+    renderTable();
+  }
+
+  // in-page self-test: pick the first two weapons, confirm the table renders
+  // and a banned-word scan of the rendered text finds nothing.
+  function selfTest() {
+    const out = document.getElementById("self-test");
+    const BANNED = ["best", "optimal", "compliant", "certified", "safe", "approved", "guaranteed", "recommended"];
+    selected.add(WEAPONS[0].id);
+    selected.add(WEAPONS[1].id);
+    render();
+    const rendered = document.body.innerText.toLowerCase();
+    let hits = [];
+    BANNED.forEach(function (w) {
+      if (rendered.indexOf(w) !== -1) hits.push(w);
+    });
+    const rowsOk = tableWrap.querySelectorAll("tbody tr").length === 9;
+    selected.clear();
+    render();
+    out.textContent = "self-test: rows=" + (rowsOk ? "ok" : "FAIL") + ", banned-words=" + (hits.length === 0 ? "ok" : "FAIL(" + hits.join(",") + ")");
+  }
+
+  render();
+  selfTest();
+})();
+</script>
+</body>
+</html>
